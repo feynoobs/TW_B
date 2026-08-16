@@ -1,0 +1,22 @@
+name: AI PR Reviewer
+
+on:
+    pull_request:
+        types: [opened, reopened, synchronize]
+
+jobs:
+    pr_agent_job:
+        runs-on: ubuntu-latest
+        permissions:
+            issues: write
+            pull-requests: write
+            contents: read
+        steps:
+            - name: PR Agent action
+              uses: Codium-ai/pr-agent@main
+              env:
+                  # 会社のGitHub Copilot（OpenAI等）のAPIキー、またはGitHubトークンを設定
+                  OPENAI_KEY: ${{ secrets.GEMINI_API_KEY }} 
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  # AIにやってほしい行動を指定（レビュー、改善案の提示、ラベル付けなど）
+                  PR_AGENT.PR_REVIEWED_ACTIONS: "review, describe, improve"
