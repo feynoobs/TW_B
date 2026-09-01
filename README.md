@@ -10,6 +10,8 @@ Laravelで実装する、匿名投稿を基本とした5ch風掲示板APIの仕�
 - 投稿者は表示名を持たず、レス番号と投稿時に発行する識別子で扱う
 - 書き込みAPIはレート制限を適用する
 - 管理操作以外では、投稿者の個人情報をレス本文と同じレスポンスに含めない
+- 主キー・外部キーは基本的に unsigned integer を採用し、負の値を持たない連番IDを使う
+- UUID を採用する場合は文字列型に切り替え、unsigned は適用しない
 - 1ファイル1APIとし、コントローラーはすべてinvokableにする
 - コントローラーの公開メソッドは `__invoke` のみとする
 
@@ -24,6 +26,7 @@ app/
 │   │   ├── Thread/ShowController.php
 │   │   ├── Thread/StoreController.php
 │   │   ├── Post/StoreController.php
+│   │   ├── PostImage/StoreController.php
 │   │   └── Post/ReportController.php
 │   ├── Requests/Api/V1/
 │   │   ├── StoreThreadRequest.php
@@ -31,7 +34,8 @@ app/
 │   └── Resources/Api/V1/
 │       ├── BoardResource.php
 │       ├── ThreadResource.php
-│       └── PostResource.php
+│       ├── PostResource.php
+│       └── PostImageResource.php
 └── Models/
     ├── Board.php
     ├── Thread.php
@@ -133,7 +137,8 @@ RateLimiter::for('posting', function (Request $request): Limit {
 | 3 | `GET` | `/api/v1/threads/{thread}` | スレッドとレスを取得 | 不要 | `Thread\ShowController` |
 | 4 | `POST` | `/api/v1/threads` | スレッドと最初のレスを作成 | レート制限 | `Thread\StoreController` |
 | 5 | `POST` | `/api/v1/threads/{thread}/posts` | レスを投稿 | レート制限 | `Post\StoreController` |
-| 6 | `POST` | `/api/v1/posts/{post}/reports` | レスを通報 | レート制限 | `Post\ReportController` |
+| 6 | `POST` | `/api/v1/posts/{post}/images` | 既存レスに画像を追加 | レート制限 | `PostImage\StoreController` |
+| 7 | `POST` | `/api/v1/posts/{post}/reports` | レスを通報 | レート制限 | `Post\ReportController` |
 
 パス内の `{board}`、`{thread}`、`{post}` はLaravelのルートモデルバインディングで解決します。認証が必要な管理APIは別途 `/api/v1/admin` 配下に追加します。
 
@@ -256,14 +261,48 @@ RateLimiter::for('posting', function (Request $request): Limit {
 }
 ```
 
+画像を添付する場合は `multipart/form-data` を使用し、画像ファイルを `images[]` として送信します。1回の投稿に添付できる枚数は最大5枚、1枚あたりのサイズは最大10MBとします。
+
+```text
+body=レス本文です
+name=名無しさん
+mail=sage
+images[]=(image/jpeg)
+images[]=(image/png)
+```
+
 バリデーション:
 
 - `body`: 必須、1〜4000文字
 - `name`: 任意、0〜40文字。未指定時は `名無しさん`
 - `mail`: 任意、0〜254文字。保存時は暗号化またはハッシュ化し、通常レスポンスには含めない
+- `images`: 任意、最大5ファイル。JPEG、PNG、GIF、WebPのみ許可
+- `images.*`: 1ファイルあたり最大10MB。拡張子ではなく実体のMIMEタイプを検証する
 - dat落ち、削除済み、書き込み停止中のスレッドには投稿できない
 
 成功時は `201 Created` と新しいレスを返します。
+
+### 既存レスへの画像追加
+
+#### `POST /api/v1/posts/{post}/images`
+
+既存レスへ画像だけを追加します。リクエスト形式は `multipart/form-data` とし、`images[]` を必須とします。画像の並び順は送信順で保存し、成功時は `201 Created` と追加された画像一覧を返します。
+
+### 画像レスポンス
+
+画像は投稿レスポンスの `images` 配列に含めます。ストレージ内部のパスやバケット名は公開せず、アプリケーション経由のURLを返します。
+
+```json
+{
+  "id": 101,
+  "url": "https://example.test/storage/posts/10/01abc.webp",
+  "mime_type": "image/webp",
+  "size": 182736,
+  "width": 1280,
+  "height": 720,
+  "sort_order": 1
+}
+```
 
 ### レスの通報
 
@@ -315,9 +354,16 @@ LaravelのForm Request、API Resource、標準のJSON例外レスポンスを利
 
 ## 7. データモデル案
 
+設計上の基本方針として、`id` 系の主キーと外部キーは `UNSIGNED` の整数型を使う。これにより、負数を防ぎ、連番IDのサイズや比較を安全に扱える。なお、UUID を採用する場合は主キー自体を文字列型に切り替える。
+
+### `groups`
+- `id`
+- `name`
+
 ### `boards`
 
 - `id`
+- `group_id`
 - `slug`: URL用の一意な文字列
 - `name`
 - `description`
@@ -348,6 +394,20 @@ LaravelのForm Request、API Resource、標準のJSON例外レスポンスを利
 - `posted_at`
 - `created_at`, `updated_at`
 
+### `post_images`
+
+- `id`
+- `post_id`
+- `disk`: `s3`、ローカル開発では `minio`
+- `path`: オブジェクトストレージ内の一意なキー
+- `original_name`: 投稿時のファイル名
+- `mime_type`
+- `size`: バイト単位
+- `width`, `height`: 画像サイズ。取得できない場合はNULL
+- `checksum`: ファイル内容のハッシュ
+- `sort_order`: レス内の表示順
+- `created_at`, `updated_at`
+
 ### `post_reports`
 
 - `id`
@@ -360,14 +420,29 @@ LaravelのForm Request、API Resource、標準のJSON例外レスポンスを利
 
 ### ER図
 
+実装上は `id`、`board_id`、`thread_id`、`post_id` などの連番は `UNSIGNED` で扱う。`number` や `sort_order` のような順位情報も負数を持たないため、同様に `UNSIGNED` を基本とする。
+
 ```mermaid
 erDiagram
+  GROUPS ||--o{ BOARDS : contains
   BOARDS ||--o{ THREADS : contains
   THREADS ||--o{ POSTS : contains
+  POSTS ||--o{ POST_IMAGES : attaches
   POSTS ||--o{ POST_REPORTS : receives
 
+  GROUPS {
+    bigint id PK
+    string slug UK
+    string name
+    text description
+    boolean is_active
+    timestamp created_at
+    timestamp updated_at
+  }
+
   BOARDS {
-    bigint  id PK
+    bigint id PK
+    bigint group_id FK
     string slug UK
     string name
     text description
@@ -380,7 +455,7 @@ erDiagram
     bigint id PK
     bigint board_id FK
     string title
-    unsigned_integer post_count
+    bigint post_count
     timestamp last_posted_at
     boolean is_archived
     boolean is_locked
@@ -391,13 +466,29 @@ erDiagram
   POSTS {
     bigint id PK
     bigint thread_id FK
-    unsigned_integer number
+    int number
     text body
     string name
     text mail
     string author_hash
     boolean is_deleted
     timestamp posted_at
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  POST_IMAGES {
+    bigint id PK
+    bigint post_id FK
+    string disk
+    string path UK
+    string original_name
+    string mime_type
+    bigint size
+    int width
+    int height
+    string checksum
+    int sort_order
     timestamp created_at
     timestamp updated_at
   }
@@ -418,10 +509,35 @@ erDiagram
 
 - `threads.board_id` に外部キーを設定する
 - `posts.thread_id` に外部キーを設定する
+- `post_images.post_id` に外部キーを設定する
 - `post_reports.post_id` に外部キーを設定する
 - `posts(thread_id, number)` に複合ユニーク制約を設定する
+- `post_images(path)` に一意制約を設定する
 - `post_reports(post_id, reporter_hash)` に重複通報防止用の複合ユニーク制約を設定する
 - 投稿削除は原則として物理削除せず、`is_deleted` と匿名化で扱う
+
+### オブジェクトストレージ
+
+画像の実体はS3互換のオブジェクトストレージへ保存し、`post_images` にはメタデータとオブジェクトキーだけを保存します。
+
+- 本番: Amazon S3などのS3互換ストレージ
+- ローカル開発: MinIO
+- LaravelのFilesystemでは `s3` ドライバーを使用し、環境変数で接続先を切り替える
+- オブジェクトキーは `posts/{post_id}/{uuid}.{extension}` のように生成する
+- DB保存とオブジェクト保存はトランザクションだけでは一括管理できないため、失敗時の孤立ファイル削除を実装する
+- 削除時はDBレコードだけでなく、対応するオブジェクトも削除する
+
+環境変数の例:
+
+```dotenv
+FILESYSTEM_DISK=s3
+AWS_ACCESS_KEY_ID=minioadmin
+AWS_SECRET_ACCESS_KEY=minioadmin
+AWS_DEFAULT_REGION=us-east-1
+AWS_BUCKET=board-images
+AWS_ENDPOINT=http://minio:9000
+AWS_USE_PATH_STYLE_ENDPOINT=true
+```
 
 ## 8. 認証・セキュリティ
 
@@ -432,6 +548,10 @@ erDiagram
 - URLを許可する場合も、危険なスキームや大量リンクを検査する
 - `mail`、IPアドレス、User-Agentは管理用途以外のレスポンスに含めない
 - 通報APIには連続送信対策を設定する
+- 画像は拡張子ではなく実体のMIMEタイプと画像デコーダーで検証する
+- 画像の保存先バケットは公開設定にせず、署名付きURLまたはアプリケーション経由で配信する
+- 画像のピクセル数、縦横比、アニメーションGIFなどの扱いを制限する
+- 画像処理ライブラリで再エンコードし、アップロードされたメタデータをそのまま信頼しない
 
 ## 9. 実装ルール
 
@@ -464,6 +584,10 @@ Feature Testを中心に、次を確認します。
 - 不正な本文、長すぎるタイトル、存在しない掲示板が拒否される
 - レート制限超過時に `429` が返る
 - 通常レスポンスにメールアドレスやIPアドレスが含まれない
+- `multipart/form-data` で画像を添付でき、`post_images` にメタデータが保存される
+- 許可されていないMIMEタイプ、サイズ超過、枚数超過の画像が拒否される
+- 画像保存に失敗した場合にDBレコードやオブジェクトが不整合にならない
+- 画像URLにストレージ内部の認証情報やバケット情報が漏れない
 - 通報が重複・大量送信されない
 
 ## 11. 実装フェーズ案
@@ -471,6 +595,7 @@ Feature Testを中心に、次を確認します。
 1. マイグレーション、モデル、Factoryを作成
 2. `routes/api.php` とAPIルート設定を追加
 3. 掲示板・スレッド・レスの読み取りAPIを実装
-4. スレッド作成・レス投稿を実装
-5. レート制限、通報、削除・管理機能を実装
-6. Feature TestとOpenAPIドキュメントを追加
+4. スレッド作成・レス投稿と画像アップロードを実装
+5. S3/MinIO接続、画像検証、孤立ファイル削除を実装
+6. レート制限、通報、削除・管理機能を実装
+7. Feature TestとOpenAPIドキュメントを追加
