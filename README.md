@@ -21,11 +21,11 @@ Laravelで実装する、匿名投稿を基本とした5ch風掲示板APIの仕�
 app/
 ├── Http/
 │   ├── Controllers/Api/V1/
-│   │   ├── Board/IndexController.php
-│   │   ├── Thread/IndexController.php
-│   │   ├── Thread/ShowController.php
-│   │   ├── Thread/StoreController.php
-│   │   ├── Post/StoreController.php
+│   │   ├── GroupListController.php
+│   │   ├── BoardListController.php
+│   │   ├── ThreadListController.php
+│   │   ├── ThreadPostController.php
+│   │   ├── PostListController.php
 │   │   ├── PostImage/StoreController.php
 │   │   └── Post/ReportController.php
 │   ├── Requests/Api/V1/
@@ -132,13 +132,21 @@ RateLimiter::for('posting', function (Request $request): Limit {
 
 | No. | メソッド | パス | 内容 | 認証 | クラス |
 |---:|---|---|---|---|---|
-| 1 | `GET` | `/api/v1/boards` | 掲示板一覧を取得 | 不要 | `Board\IndexController` |
-| 2 | `GET` | `/api/v1/boards/{board}/threads` | スレッド一覧を取得 | 不要 | `Thread\IndexController` |
-| 3 | `GET` | `/api/v1/threads/{thread}` | スレッドとレスを取得 | 不要 | `Thread\ShowController` |
-| 4 | `POST` | `/api/v1/threads` | スレッドと最初のレスを作成 | レート制限 | `Thread\StoreController` |
-| 5 | `POST` | `/api/v1/threads/{thread}/posts` | レスを投稿 | レート制限 | `Post\StoreController` |
-| 6 | `POST` | `/api/v1/posts/{post}/images` | 既存レスに画像を追加 | レート制限 | `PostImage\StoreController` |
-| 7 | `POST` | `/api/v1/posts/{post}/reports` | レスを通報 | レート制限 | `Post\ReportController` |
+| 1 | `GET` | `/api/v1/groups` | 掲示板グループ一覧を取得 | 不要 | `GroupListController` |
+| 2 | `GET` | `/api/v1/{group_slug}/boards` | 掲示板一覧を取得 | 不要 | `BoardListController` |
+| 3 | `GET` | `/api/v1/boards/{board_slug}/threads` | スレッド一覧を取得 | 不要 | `ThreadListController` |
+| 4 | `POST` | `/api/v1/board/{board_slug}/threads/create` | スレッドと最初のレスを作成 | レート制限 | `ThreadCreateController` |
+| 3 | `GET` | `/api/v1/{thread_id}/thread/responsed` | スレッド一覧を取得 | 不要 | `ThreadListController` |
+
+
+
+
+
+| 4 | `GET` | `/api/v1/threads/{thread_id}` | スレッドとレスを取得 | 不要 | `Thread\ShowController` |
+| 5 | `POST` | `/api/v1/threads/` | スレッドと最初のレスを作成 | レート制限 | `Thread\StoreController` |
+| 6 | `POST` | `/api/v1/threads/{thread}/posts` | レスを投稿 | レート制限 | `Post\StoreController` |
+| 7 | `POST` | `/api/v1/posts/{post}/images` | 既存レスに画像を追加 | レート制限 | `PostImage\StoreController` |
+| 8 | `POST` | `/api/v1/posts/{post}/reports` | レスを通報 | レート制限 | `Post\ReportController` |
 
 パス内の `{board}`、`{thread}`、`{post}` はLaravelのルートモデルバインディングで解決します。認証が必要な管理APIは別途 `/api/v1/admin` 配下に追加します。
 
@@ -357,65 +365,72 @@ LaravelのForm Request、API Resource、標準のJSON例外レスポンスを利
 設計上の基本方針として、`id` 系の主キーと外部キーは `UNSIGNED` の整数型を使う。これにより、負数を防ぎ、連番IDのサイズや比較を安全に扱える。なお、UUID を採用する場合は主キー自体を文字列型に切り替える。
 
 ### `groups`
-- `id`
-- `name`
-
-### `boards`
-
-- `id`
-- `group_id`
+- `id` (unsigned bigint)
 - `slug`: URL用の一意な文字列
 - `name`
 - `description`
-- `is_active`
+- `status`: あぼーんなど
+- `created_at`, `updated_at`
+
+### `boards`
+
+- `id` (unsigned bigint)
+- `group_id` (unsigned bigint)
+- `slug`: URL用の一意な文字列
+- `name`
+- `name_nns`: 名無しさんのデフォルト名 
+- `description`
 - `created_at`, `updated_at`
 
 ### `threads`
 
-- `id`
-- `board_id`
+- `id` (unsigned bigint)
+- `board_id` (unsigned bigint)
 - `title`
-- `post_count`
-- `last_posted_at`
-- `is_archived`
-- `is_locked`
+- `status`: あぼーんなど
 - `created_at`, `updated_at`
 
-### `posts`
+### `thread_reports`
 
-- `id`
-- `thread_id`
-- `number`: スレッド内で一意なレス番号
+- `id` (unsigned bigint)
+- `response_id` (unsigned bigint)
+- `reason`
+- `description`
+- `status`: 受理など
+- `created_at`, `updated_at`
+
+
+### `responses`
+
+- `id` (unsigned bigint)
+- `thread_id` (unsigned bigint)
 - `body`
 - `name`
-- `mail`: 暗号化して保存する場合のカラム
+- `mail`
 - `author_hash`: 投稿元を識別するためのローテーション可能なハッシュ
-- `is_deleted`
+- `status`: あぼーんなど
 - `posted_at`
 - `created_at`, `updated_at`
 
-### `post_images`
+### `response_images`
 
-- `id`
-- `post_id`
-- `disk`: `s3`、ローカル開発では `minio`
-- `path`: オブジェクトストレージ内の一意なキー
+- `id` (unsigned bigint)
+- `response_id` (unsigned bigint)
 - `original_name`: 投稿時のファイル名
+- `file_name`: 保存時のファイル名
 - `mime_type`
-- `size`: バイト単位
-- `width`, `height`: 画像サイズ。取得できない場合はNULL
-- `checksum`: ファイル内容のハッシュ
-- `sort_order`: レス内の表示順
+- `size` (unsigned bigint): バイト単位
+- `width` (unsigned bigint), `height` (unsigned bigint): 画像サイズ。取得できない場合はNULL
+- `status`: あぼーんなど
 - `created_at`, `updated_at`
 
-### `post_reports`
+### `response_reports`
 
-- `id`
-- `post_id`
+- `id` (unsigned bigint)
+- `response_id` (unsigned bigint)
 - `reason`
 - `description`
-- `reporter_hash`: 通報元を識別するためのハッシュ
-- `status`: `pending`、`reviewed`、`rejected`
+- `status`: 受理など
 - `created_at`, `updated_at`
 
 ### ER図
@@ -426,80 +441,83 @@ LaravelのForm Request、API Resource、標準のJSON例外レスポンスを利
 erDiagram
   GROUPS ||--o{ BOARDS : contains
   BOARDS ||--o{ THREADS : contains
-  THREADS ||--o{ POSTS : contains
-  POSTS ||--o{ POST_IMAGES : attaches
-  POSTS ||--o{ POST_REPORTS : receives
+  THREADS ||--o{ RESPONSES : contains
+  THREADS ||--o{ THREAD_REPORTS : receives
+  RESPONSES ||--o{ RESPONSE_IMAGES : attaches
+  RESPONSES ||--o{ RESPONSE_REPORTS : receives
 
   GROUPS {
-    bigint id PK
+    unsigned_bigint id PK
     string slug UK
     string name
     text description
-    boolean is_active
+    unsigned_bigint status
     timestamp created_at
     timestamp updated_at
   }
 
   BOARDS {
-    bigint id PK
-    bigint group_id FK
+    unsigned_bigint id PK
+    unsigned_bigint group_id FK
     string slug UK
     string name
     text description
-    boolean is_active
+    unsigned_bigint status
     timestamp created_at
     timestamp updated_at
   }
 
   THREADS {
-    bigint id PK
-    bigint board_id FK
+    unsigned_bigint id PK
+    unsigned_bigint board_id FK
     string title
-    bigint post_count
-    timestamp last_posted_at
-    boolean is_archived
-    boolean is_locked
+    unsigned_bigint status
     timestamp created_at
     timestamp updated_at
   }
 
-  POSTS {
-    bigint id PK
-    bigint thread_id FK
-    int number
-    text body
-    string name
-    text mail
-    string author_hash
-    boolean is_deleted
-    timestamp posted_at
-    timestamp created_at
-    timestamp updated_at
-  }
-
-  POST_IMAGES {
-    bigint id PK
-    bigint post_id FK
-    string disk
-    string path UK
-    string original_name
-    string mime_type
-    bigint size
-    int width
-    int height
-    string checksum
-    int sort_order
-    timestamp created_at
-    timestamp updated_at
-  }
-
-  POST_REPORTS {
-    bigint id PK
-    bigint post_id FK
+  THREAD_REPORTS {
+    unsigned_bigint id PK
+    unsigned_bigint thread_id FK
     string reason
     text description
-    string reporter_hash
-    string status
+    unsigned_bigint status
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  RESPONSES {
+    unsigned_bigint id PK
+    unsigned_bigint thread_id FK
+    text body
+    string name
+    string mail
+    string author_hash
+    unsigned_bigint status
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  RESPONSE_IMAGES {
+    unsigned_bigint id PK
+    unsigned_bigint response_id FK
+    string file_name
+    string original_name
+    string mime_type
+    unsigned_int size
+    unsigned_int width
+    unsigned_int height
+    string checksum
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  RESPONSE_REPORTS {
+    unsigned_bigint id PK
+    unsigned_bigint response_id FK
+    string reason
+    text description
+    unsigned_bigint status
     timestamp created_at
     timestamp updated_at
   }
@@ -507,14 +525,11 @@ erDiagram
 
 制約:
 
+- `boards.group_id` に外部キーを設定する
 - `threads.board_id` に外部キーを設定する
-- `posts.thread_id` に外部キーを設定する
-- `post_images.post_id` に外部キーを設定する
-- `post_reports.post_id` に外部キーを設定する
-- `posts(thread_id, number)` に複合ユニーク制約を設定する
-- `post_images(path)` に一意制約を設定する
-- `post_reports(post_id, reporter_hash)` に重複通報防止用の複合ユニーク制約を設定する
-- 投稿削除は原則として物理削除せず、`is_deleted` と匿名化で扱う
+- `responses.thread_id` に外部キーを設定する
+- `response_images.response_id` に外部キーを設定する
+- `response_reports.response_id` に外部キーを設定する
 
 ### オブジェクトストレージ
 
