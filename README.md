@@ -135,18 +135,10 @@ RateLimiter::for('posting', function (Request $request): Limit {
 | 1 | `GET` | `/api/v1/groups` | 掲示板グループ一覧を取得 | 不要 | `GroupListController` |
 | 2 | `GET` | `/api/v1/{group_slug}/boards` | 掲示板一覧を取得 | 不要 | `BoardListController` |
 | 3 | `GET` | `/api/v1/boards/{board_slug}/threads` | スレッド一覧を取得 | 不要 | `ThreadListController` |
-| 4 | `POST` | `/api/v1/board/{board_slug}/threads/create` | スレッドと最初のレスを作成 | レート制限 | `ThreadCreateController` |
-| 3 | `GET` | `/api/v1/{thread_id}/thread/responsed` | スレッド一覧を取得 | 不要 | `ThreadListController` |
-
-
-
-
-
-| 4 | `GET` | `/api/v1/threads/{thread_id}` | スレッドとレスを取得 | 不要 | `Thread\ShowController` |
-| 5 | `POST` | `/api/v1/threads/` | スレッドと最初のレスを作成 | レート制限 | `Thread\StoreController` |
-| 6 | `POST` | `/api/v1/threads/{thread}/posts` | レスを投稿 | レート制限 | `Post\StoreController` |
-| 7 | `POST` | `/api/v1/posts/{post}/images` | 既存レスに画像を追加 | レート制限 | `PostImage\StoreController` |
-| 8 | `POST` | `/api/v1/posts/{post}/reports` | レスを通報 | レート制限 | `Post\ReportController` |
+| 4 | `POST` | `/api/v1/board/{board_slug}/thread/create` | スレッドと最初のレスを作成 | レート制限 | `ThreadCreateController` |
+| 5 | `GET` | `/api/v1/{thread_id}/thread/responses` | レス一覧を取得 | 不要 | `ResponseListController` |
+| 6 | `POST` | `/api/v1/threads/{thread_id}/response/create` | レスを投稿 | レート制限 | `ResponseCreateController` |
+| 7 | `POST` | `/api/v1/response/{responses_id}/images` | 既存レスに画像を追加 | レート制限 | `ResponseImageSendController` |
 
 パス内の `{board}`、`{thread}`、`{post}` はLaravelのルートモデルバインディングで解決します。認証が必要な管理APIは別途 `/api/v1/admin` 配下に追加します。
 
