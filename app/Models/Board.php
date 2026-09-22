@@ -7,12 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * 掲示板のモデル
+ */
 class Board extends Model
 {
     use HasFactory;
 
     protected $fillable = ['group_id', 'slug', 'name', 'status'];
-
 
     protected function casts(): array
     {
@@ -26,7 +28,6 @@ class Board extends Model
     {
         return $this->belongsTo(Group::class);
     }
-
 
     public function threads(): HasMany
     {

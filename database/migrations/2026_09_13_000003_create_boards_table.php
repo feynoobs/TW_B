@@ -10,6 +10,7 @@ return new class extends Migration
     {
         Schema::create('boards', function (Blueprint $table): void {
             $table->id();
+            $table->foreignId('group_id')->constrained();
             $table->string('slug')->unique();
             $table->string('name');
             $table->string('name_nns');

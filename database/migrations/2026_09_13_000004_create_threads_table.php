@@ -10,9 +10,11 @@ return new class extends Migration
     {
         Schema::create('threads', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('board_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('board_id')->constrained();
             $table->string('title');
+            $table->unsignedBigInteger('sort');
             $table->unsignedBigInteger('status')->default(0);
+            $table->index(['board_id', 'sort']);
             $table->timestamps();
         });
     }

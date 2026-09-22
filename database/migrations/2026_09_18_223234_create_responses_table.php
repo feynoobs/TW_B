@@ -13,12 +13,14 @@ return new class extends Migration
     {
         Schema::create('responses', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('thread_id');
+            $table->foreignId('thread_id')->constrained();
             $table->text('content');
             $table->string('name')->nullable();
             $table->string('mail')->nullable();
             $table->string('hash')->nullable();
-            $table->string('wacchoi')->nullable();
+            $table->string('user_agent');
+            $table->string('user_domain');
+            $table->string('ip_address');
             $table->unsignedBigInteger('status')->default(0);
             $table->timestamps();
         });
