@@ -14,12 +14,16 @@ class Board extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['group_id', 'slug', 'name', 'status'];
+    protected $fillable = [
+        'group_id', 'slug', 'name', 'name_nns', 'status', 'sort'
+    ];
 
     protected function casts(): array
     {
         return [
+            'group_id' => 'integer',
             'status' => 'integer',
+            'sort' => 'integer',
             'created_at' => 'datetime'
         ];
     }

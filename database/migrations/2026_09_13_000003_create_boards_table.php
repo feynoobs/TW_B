@@ -14,6 +14,7 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->string('name');
             $table->string('name_nns');
+            $table->unsignedBigInteger('sort');
             $table->unsignedBigInteger('status')->default(0);
             $table->timestamps();
         });

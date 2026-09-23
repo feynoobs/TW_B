@@ -12,7 +12,7 @@ class Response extends Model
     use HasFactory, searchable;
 
     protected $fillable = [
-        'thread_id', 'body', 'name', 'mail', 'hash', 'wacchoi', 'status'
+        'thread_id', 'content', 'name', 'mail', 'hash', 'user_agent', 'user_domain', 'ip_address', 'status'
     ];
 
     protected function casts(): array

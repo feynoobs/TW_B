@@ -10,13 +10,14 @@ class Group extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['slug', 'name', 'status'];
+    protected $fillable = ['slug', 'name', 'status', 'sort'];
 
 
     protected function casts(): array
     {
         return [
             'status' => 'integer',
+            'sort' => 'integer',
             'created_at' => 'datetime'
         ];
     }
