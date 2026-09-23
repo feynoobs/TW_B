@@ -12,10 +12,11 @@ return new class extends Migration
             $table->id();
             $table->foreignId('board_id')->constrained();
             $table->string('title');
-            $table->unsignedBigInteger('sort');
             $table->unsignedBigInteger('status')->default(0);
-            $table->index(['board_id', 'sort']);
+            $table->timestamp('modified_at');
             $table->timestamps();
+
+            $table->index(['board_id', 'modified_at']);
         });
     }
 

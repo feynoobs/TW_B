@@ -17,6 +17,8 @@ return new class extends Migration
             $table->unsignedBigInteger('sort');
             $table->unsignedBigInteger('status')->default(0);
             $table->timestamps();
+
+            $table->index(['group_id']);
         });
     }
 

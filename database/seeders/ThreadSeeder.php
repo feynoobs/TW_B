@@ -19,7 +19,7 @@ class ThreadSeeder extends Seeder
             for ($j = 1; $j <= 5; $j++) {
                 Thread::create([
                     'title' => $faker->realText(10),
-                    'sort' => $j,
+                    'modified_at' => now()->subMinutes($j),
                     'status' => 0,
                     'board_id' => $i,
                 ]);

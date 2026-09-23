@@ -13,14 +13,14 @@ class Thread extends Model
     use HasFactory, Searchable;
 
     protected $fillable = [
-        'board_id', 'title', 'status', 'sort'
+        'board_id', 'title', 'status', 'modified_at'
     ];
 
     protected function casts(): array
     {
         return [
             'status' => 'integer',
-            'sort' => 'integer',
+            'modified_at' => 'datetime',
             'created_at' => 'datetime',
         ];
     }

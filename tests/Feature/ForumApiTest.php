@@ -80,7 +80,7 @@ class ForumApiTest extends TestCase
         $board = $this->seedBoard('news', 'ニュース', 'ニュース全般');
         $thread = $board->threads()->create([
             'title' => '既存スレッド',
-            'sort' => 1,
+            'modified_at' => now(),
             'status' => 0,
         ]);
         $thread->responses()->create([
@@ -103,7 +103,7 @@ class ForumApiTest extends TestCase
         $board = $this->seedBoard('news', 'ニュース', 'ニュース全般');
         $thread = $board->threads()->create([
             'title' => '報告テスト',
-            'sort' => 1,
+            'modified_at' => now(),
             'status' => 0,
         ]);
         $thread->responses()->create([
