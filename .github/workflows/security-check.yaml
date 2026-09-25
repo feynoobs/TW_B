@@ -1,0 +1,30 @@
+name: Security Vulnerability Scan
+
+# ① 実行するタイミングの定義
+on:
+  push:
+    branches: [ "main", "develop" ] # mainやdevelopにpushされた時
+  schedule:
+    - cron: '0 18 * * *' # ★毎日午前3時（日本時間）に自動で定期実行
+
+jobs:
+  scan:
+    name: Package Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      # ② ソースコードをチェックアウト
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ③ トリビー（Trivy）を使って脆弱性をスキャン
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs' # ファイルシステム（プロジェクト全体）をスキャン
+          scan-ref: '.'
+          format: 'table'
+          # 「High」と「Critical」の脆弱性が見つかった場合だけアラートを出す
+          severity: 'HIGH,CRITICAL'
+          # 脆弱性が見つかったら、このGitHub Actionsのジョブを「失敗（エラー）」にする設定
+          exit-code: '1'
