@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Group;
 use Illuminate\Http\Request;
-use \Illuminate\Http\JsonResponse;
+use Illuminate\Http\JsonResponse;
 
 class BoardListController extends Controller
 {
@@ -20,6 +20,6 @@ class BoardListController extends Controller
             ])
             ->where('slug', $slug)->firstOrFail();
 
-        return response()->json($group->boards);
+        return response()->json($group);
     }
 }
