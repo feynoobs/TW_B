@@ -18,10 +18,11 @@ class ThreadCreateController extends Controller
     public function __invoke(Request $request, string $slug): JsonResponse
     {
         $rules = [
-            'string' => 'required|string|exists:boards,slug',
+            'slug' => 'required|string|exists:boards,slug|max:255',
             'title' => 'required|string|max:255',
-            'content' => 'required|string',
+            'content' => 'required|string|max:2048',
         ];
+        $request->merge(['slug' => $slug]);
         $validator = Validator::make($request->all(), $rules);
         $result = ['result' => 'fail', 'message' => $validator->errors()->first()];
         if (!$validator->fails()) {
@@ -32,7 +33,6 @@ class ThreadCreateController extends Controller
                     $thread = new Thread();
                     $thread->board_id = $board->id;
                     $thread->title = $request->input('title');
-                    $thread->content = $request->input('content');
                     $thread->modified_at = now();
                     $thread->save();
                     $r = ['result' => 'success', 'message' => 'Thread created successfully'];
