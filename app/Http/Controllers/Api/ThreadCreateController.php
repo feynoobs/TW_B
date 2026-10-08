@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Board;
 use App\Models\Thread;
+use App\Models\Response;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +36,16 @@ class ThreadCreateController extends Controller
                     $thread->title = $request->input('title');
                     $thread->modified_at = now();
                     $thread->save();
+
+                    $response = new Response();
+                    $response->thread_id = $thread->id;
+                    $response->content = $request->input('content');
+                    $response->name = $request->input('name');
+                    $response->mail = $request->input('mail');
+                    $response->hash = $request->input('hash');
+                    $response->user_agent = $request->userAgent();
+                    $response->ip_address = $request->ip();
+                    $response->save();
                     $r = ['result' => 'success', 'message' => 'Thread created successfully'];
                 }
                 return $r;

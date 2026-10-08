@@ -19,7 +19,6 @@ return new class extends Migration
             $table->string('mail')->nullable();
             $table->string('hash')->nullable();
             $table->string('user_agent');
-            $table->string('user_domain');
             $table->string('ip_address');
             $table->unsignedBigInteger('status')->default(0);
             $table->timestamps();
