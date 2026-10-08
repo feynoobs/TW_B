@@ -18,7 +18,7 @@ class BoardListController extends Controller
             ::with([
                 'boards' => fn ($query) => $query->orderBy('id', 'asc'),
             ])
-            ->where('slug', $slug)->firstOrFail();
+            ->where('slug', $slug)->first();
 
         return response()->json($group);
     }
