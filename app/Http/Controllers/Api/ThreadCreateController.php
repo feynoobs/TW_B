@@ -9,7 +9,7 @@ use App\Models\Response;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator; 
+use Illuminate\Support\Facades\Validator;
 
 class ThreadCreateController extends Controller
 {
@@ -22,6 +22,10 @@ class ThreadCreateController extends Controller
             'slug' => 'required|string|exists:boards,slug|max:255',
             'title' => 'required|string|max:255',
             'content' => 'required|string|max:2048',
+            'images' => 'nullable|array|max:5',
+            'images.*' => 'file|mimes:jpeg,png,gif|max:16384',
+            'name' => 'nullable|string|max:255',
+            'mail' => 'nullable|string|max:255',
         ];
         $request->merge(['slug' => $slug]);
         $validator = Validator::make($request->all(), $rules);
@@ -46,6 +50,8 @@ class ThreadCreateController extends Controller
                     $response->user_agent = $request->userAgent();
                     $response->ip_address = $request->ip();
                     $response->save();
+
+
                     $r = ['result' => 'success', 'message' => 'Thread created successfully'];
                 }
                 return $r;
