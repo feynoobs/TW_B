@@ -61,6 +61,7 @@ class ThreadCreateApiTest extends TestCase
     public function test_thread_create_endpoint_stores_each_attached_image(): void
     {
         Storage::fake('s3');
+        $imageData = 'R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
 
         $group = Group::create([
             'slug' => 'general',
@@ -83,11 +84,11 @@ class ThreadCreateApiTest extends TestCase
             'content' => '画像を添付します',
             'images' => [
                 [
-                    'data' => 'R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
+                    'data' => 'data:image/gif;base64,' . $imageData,
                     'file_name' => 'first.gif',
                 ],
                 [
-                    'data' => 'R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
+                    'data' => 'data:image/gif;base64,' . $imageData,
                     'file_name' => 'second.gif',
                 ],
             ],
@@ -107,9 +108,9 @@ class ThreadCreateApiTest extends TestCase
 
         $storedImage = DB::table('images')->where('file_name', 'first.gif')->first();
         $this->assertSame('image/gif', $storedImage->mime_type);
-        $this->assertSame(strlen(base64_decode('R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')), $storedImage->size);
+        $this->assertSame(strlen(base64_decode($imageData)), $storedImage->size);
         $this->assertSame(
-            base64_decode('R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='),
+            base64_decode($imageData),
             Storage::disk('s3')->get($storedImage->path)
         );
     }
