@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Board;
 use App\Models\Thread;
 use App\Models\Response;
+use App\Models\Image;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class ThreadCreateController extends Controller
 {
@@ -23,8 +26,9 @@ class ThreadCreateController extends Controller
             'title' => 'required|string|max:255',
             'content' => 'required|string|max:2048',
             'images' => 'nullable|array|max:5',
-            'images.*' => 'file|mimes:jpeg,png,gif|max:16384',
-            'name' => 'nullable|string|max:255',
+            'images.*' => 'nullable|array:data,file_name',
+            'images.*.data' => 'nullable|string|max:22369647|regex~\A(?:data:image/(?:jpeg|png|gif|webp);base64,)?[A-Za-z0-9+/]+={0,2}\z~',
+            'images.*.file_name' => 'nullable|string|max:255',
             'mail' => 'nullable|string|max:255',
         ];
         $request->merge(['slug' => $slug]);
@@ -51,6 +55,17 @@ class ThreadCreateController extends Controller
                     $response->ip_address = $request->ip();
                     $response->save();
 
+                    foreach ($request->input('images', []) as $image) {
+                        $i = new Image();
+                        $path = Str::uuid();
+                        $i->response_id = $response->id;
+                        $i->file_name = $image['file_name'];
+                        $i->path = $path;
+                        $i->mime_type = 'image/' . pathinfo($image['file_name'], PATHINFO_EXTENSION);
+                        $i->save();
+
+                        Storage::disk('s3')->put($path, $image['data'], ['ContentType' => $i->mime_type]);
+                    }
 
                     $r = ['result' => 'success', 'message' => 'Thread created successfully'];
                 }

@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Group;
 use App\Models\Thread;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ThreadCreateApiTest extends TestCase
@@ -54,5 +56,61 @@ class ThreadCreateApiTest extends TestCase
             'content' => '最初の投稿です',
             'name' => 'テストユーザー',
         ]);
+    }
+
+    public function test_thread_create_endpoint_stores_each_attached_image(): void
+    {
+        Storage::fake('s3');
+
+        $group = Group::create([
+            'slug' => 'general',
+            'name' => '一般',
+            'sort' => 1,
+            'status' => 0,
+        ]);
+
+        $group->boards()->create([
+            'group_id' => $group->id,
+            'slug' => 'news',
+            'name' => 'ニュース',
+            'name_nns' => 'ニュース',
+            'sort' => 1,
+            'status' => 0,
+        ]);
+
+        $this->postJson('/api/boards/news/thread/create', [
+            'title' => '画像付きスレッド',
+            'content' => '画像を添付します',
+            'images' => [
+                [
+                    'data' => 'R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
+                    'file_name' => 'first.gif',
+                ],
+                [
+                    'data' => 'R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
+                    'file_name' => 'second.gif',
+                ],
+            ],
+        ])
+            ->assertOk()
+            ->assertJsonPath('result', 'success');
+
+        $this->assertDatabaseCount('images', 2);
+        $this->assertDatabaseHas('images', [
+            'file_name' => 'first.gif',
+            'mime_type' => 'image/gif',
+        ]);
+
+        foreach (DB::table('images')->pluck('path') as $path) {
+            Storage::disk('s3')->assertExists($path);
+        }
+
+        $storedImage = DB::table('images')->where('file_name', 'first.gif')->first();
+        $this->assertSame('image/gif', $storedImage->mime_type);
+        $this->assertSame(strlen(base64_decode('R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')), $storedImage->size);
+        $this->assertSame(
+            base64_decode('R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='),
+            Storage::disk('s3')->get($storedImage->path)
+        );
     }
 }

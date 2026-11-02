@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('images', function (Blueprint $table) {
             $table->id();
             $table->foreignId('response_id')->constrained();
-            $table->string('filename');
+            $table->string('file_name');
             $table->string('path');
             $table->string('mime_type');
             $table->unsignedBigInteger('size');

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,8 +11,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Board extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'group_id', 'slug', 'name', 'name_nns', 'status', 'sort'
     ];
