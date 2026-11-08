@@ -62,15 +62,15 @@ class ThreadCreateController extends Controller
                         $base64 = preg_replace('/\A(?:data:)?image\/(?:jpeg|png|gif|webp);base64,/', '', $image['data']);
                         $binData = base64_decode($base64, true);
 
-                        $i = new Image();
-                        $i->response_id = $response->id;
-                        $i->file_name = $image['file_name'];
-                        $i->path = $path;
-                        $i->size = strlen($binData);
-                        $i->mime_type = 'image/' . pathinfo($image['file_name'], PATHINFO_EXTENSION);
-                        $i->save();
+                        $imageModel = new Image();
+                        $imageModel->response_id = $response->id;
+                        $imageModel->file_name = $image['file_name'];
+                        $imageModel->path = $path;
+                        $imageModel->size = strlen($binData);
+                        $imageModel->mime_type = 'image/' . pathinfo($image['file_name'], PATHINFO_EXTENSION);
+                        $imageModel->save();
 
-                        Storage::disk('s3')->put($path, $binData, ['ContentType' => $i->mime_type]);
+                        Storage::disk('s3')->put($path, $binData, ['ContentType' => $imageModel->mime_type]);
                     }
 
                     $r = ['result' => 'success', 'message' => 'Thread created successfully'];

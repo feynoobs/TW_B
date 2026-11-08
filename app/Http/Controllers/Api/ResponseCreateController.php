@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class ResponseCreateController extends Controller
 {
@@ -55,11 +56,19 @@ class ResponseCreateController extends Controller
                     }
 
                     foreach ($request->input('images', []) as $image) {
+                        $path = "{$thread->board->group_id}/{$thread->board_id}/{$thread->id}/{$response->id}/".Str::uuid();
+                        $base64 = preg_replace('/\A(?:data:)?image\/(?:jpeg|png|gif|webp);base64,/', '', $image['data']);
+                        $binData = base64_decode($base64, true);
+
                         $imageModel = new Image();
                         $imageModel->response_id = $response->id;
-                        $imageModel->data = $image['data'];
                         $imageModel->file_name = $image['file_name'];
+                        $imageModel->path = $path;
+                        $imageModel->size = strlen($binData);
+                        $imageModel->mime_type = 'image/' . pathinfo($image['file_name'], PATHINFO_EXTENSION);
                         $imageModel->save();
+
+                        Storage::disk('s3')->put($path, $binData, ['ContentType' => $imageModel->mime_type]);
                     }
 
                     return ['result' => 'success', 'message' => 'Response created successfully'];
