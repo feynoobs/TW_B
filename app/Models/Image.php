@@ -7,14 +7,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Image extends Model
 {
-    protected $fillable = ['response_id', 'file_name', 'path', 'mime_type'];
+    protected $fillable = ['response_id', 'file_name', 'path', 'mime_type', 'size', 'status'];
 
 
     protected function casts(): array
     {
         return [
-            'status' => 'integer',
-            'sort' => 'integer',
+            'id' => 'integer',
+            'response_id' => 'integer',
             'created_at' => 'datetime'
         ];
     }

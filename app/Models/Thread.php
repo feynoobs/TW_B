@@ -18,6 +18,8 @@ class Thread extends Model
     protected function casts(): array
     {
         return [
+            'id' => 'integer',
+            'board_id' => 'integer',
             'status' => 'integer',
             'modified_at' => 'datetime',
             'created_at' => 'datetime',

@@ -11,13 +11,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Board extends Model
 {
-    protected $fillable = [
-        'group_id', 'slug', 'name', 'name_nns', 'status', 'sort'
-    ];
+    protected $fillable = ['group_id', 'slug', 'name', 'name_nns', 'status', 'sort'];
 
     protected function casts(): array
     {
         return [
+            'id' => 'integer',
             'group_id' => 'integer',
             'status' => 'integer',
             'sort' => 'integer',

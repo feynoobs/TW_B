@@ -13,6 +13,7 @@ class Group extends Model
     protected function casts(): array
     {
         return [
+            'id' => 'integer',
             'status' => 'integer',
             'sort' => 'integer',
             'created_at' => 'datetime'

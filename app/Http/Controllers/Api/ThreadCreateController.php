@@ -26,10 +26,11 @@ class ThreadCreateController extends Controller
             'title' => 'required|string|max:255',
             'content' => 'required|string|max:2048',
             'images' => 'nullable|array|max:5',
-            'images.*' => 'nullable|array:data,file_name',
-            'images.*.data' => 'nullable|string|max:22369647',
-            'images.*.file_name' => 'nullable|string|max:255',
+            'images.*' => 'array:data,file_name',
+            'images.*.data' => ['string', 'max:22369647', 'regex:/\A(?:data:)?image\/(?:jpeg|png|gif|webp);base64,[A-Za-z0-9+\/]*={0,2}\z/',],
+            'images.*.file_name' => 'string|max:255',
             'mail' => 'nullable|string|max:255',
+            'name' => 'nullable|string|max:255',
         ];
         $request->merge(['slug' => $slug]);
         $validator = Validator::make($request->all(), $rules);
@@ -56,22 +57,20 @@ class ThreadCreateController extends Controller
                     $response->save();
 
                     foreach ($request->input('images', []) as $image) {
-                        $path = Str::uuid();
-                        $isImageFile = preg_match('/\A(?:data:)?image\/(?:jpeg|png|gif|webp);base64,[A-Za-z0-9+\/]*={0,2}\z/', $image['data']) === 1;
-                        if ($isImageFile) {
-                            $base64 = preg_replace('/\A(?:data:)?image\/(?:jpeg|png|gif|webp);base64,/', '', $image['data']);
-                            $binData = base64_decode($base64, true);
+                        $path = "{$board->group_id}/{$board->id}/{$thread->id}/{$response->id}/".Str::uuid();
 
-                            $i = new Image();
-                            $i->response_id = $response->id;
-                            $i->file_name = $image['file_name'];
-                            $i->path = $path;
-                            $i->size = strlen($binData);
-                            $i->mime_type = 'image/' . pathinfo($image['file_name'], PATHINFO_EXTENSION);
-                            $i->save();
+                        $base64 = preg_replace('/\A(?:data:)?image\/(?:jpeg|png|gif|webp);base64,/', '', $image['data']);
+                        $binData = base64_decode($base64, true);
 
-                            Storage::disk('s3')->put($path, $binData, ['ContentType' => $i->mime_type]);
-                        }
+                        $i = new Image();
+                        $i->response_id = $response->id;
+                        $i->file_name = $image['file_name'];
+                        $i->path = $path;
+                        $i->size = strlen($binData);
+                        $i->mime_type = 'image/' . pathinfo($image['file_name'], PATHINFO_EXTENSION);
+                        $i->save();
+
+                        Storage::disk('s3')->put($path, $binData, ['ContentType' => $i->mime_type]);
                     }
 
                     $r = ['result' => 'success', 'message' => 'Thread created successfully'];

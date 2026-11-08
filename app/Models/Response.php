@@ -17,6 +17,8 @@ class Response extends Model
     protected function casts(): array
     {
         return [
+            'id' => 'integer',
+            'thread_id' => 'integer',
             'status' => 'integer',
             'created_at' => 'datetime'
         ];
